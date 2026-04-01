@@ -4,13 +4,17 @@
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+- **Owner**: Holds the pet list and exposes `all_tasks()` so scheduling can see every task.
+- **Pet**: Owns a list of `Task` objects; `add_task` sets `pet_name`; `mark_task_complete` handles recurrence.
+- **Task**: Dataclass for one activity (time, duration, priority, frequency, date, completion).
+- **Scheduler**: Stateless helper bound to an `Owner`; sorts, filters, detects same-time conflicts, and builds a daily plan with explanation strings.
+
+Relationships: Owner → many Pets → many Tasks; Scheduler uses Owner to read data.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+- **Recurrence on `Pet`**: Placing `mark_task_complete` on `Pet` keeps task lists coherent and avoids the scheduler mutating tasks without knowing which pet owns them.
+- **Conflicts**: Only exact same **date + start time** are flagged (not overlapping intervals) to stay lightweight and predictable for the course; see tradeoffs below.
 
 ---
 
@@ -18,13 +22,13 @@
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+- **Priority** (high → medium → low) is applied first, then **clock time** within the same priority band.
+- **Calendar date** scopes which tasks appear in “today’s plan.”
+- **Minutes available** is compared to the **sum of durations**; if over budget, a warning is shown (tasks are not auto-dropped).
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+- **Exact-time conflicts only**: The scheduler does not check whether two tasks **overlap** (e.g. 08:00–08:30 vs 08:15–08:20). That keeps the implementation small and avoids false positives when durations are uncertain, but it can miss real double-bookings. A future version could merge intervals per pet and detect overlaps.
 
 ---
 
@@ -32,13 +36,14 @@
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+- Brainstorming class boundaries and a minimal conflict strategy.
+- Scaffolding tests for sort, recurrence, and conflicts.
+- Wiring Streamlit `session_state` to a single `Owner` instance.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+- Rejected “drop lowest-priority tasks automatically” when over budget — instead **warn** so the human decides; clearer for a pet-care scenario.
+- Verified behavior with `pytest` and `python main.py` on Windows (ASCII-safe CLI output).
 
 ---
 
@@ -46,13 +51,11 @@
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+- Task completion, pet task counts, chronological sort, priority+time sort, daily recurrence, conflict messages, filters, and daily plan date scoping.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+- **Medium-high** for the behaviors under test. Next edge cases: **weekly** recurrence across month boundaries, invalid `HH:MM` inputs in the UI, and many tasks at identical times.
 
 ---
 
@@ -60,12 +63,12 @@
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+- Clear split between domain (`pawpal_system`) and UI (`app.py`) made testing straightforward.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+- Task **editing** in the UI, JSON **persistence**, and **overlap-based** conflict detection.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+- The “lead architect” still owns requirements, tradeoffs, and test design; AI accelerates coding once those are explicit.
